@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+user="$1"
+host="$2"
+
+echo "syncing $host"
+
+last_time=$(date --date="30 days ago")
+if [ -e data/.$host.last ]
+then
+    last_time=$(stat --printf='%y' data/.$host.last)
+fi
+
+echo "last sync time for $host was $last_time"
+
+# we're skipping the conn logs for now...
+#--filter="+ logs/*/conn.*.log.gz" \
+
+
+# find files newer than the last received file
+ssh $user@$host "find /nsm/bro/logs -type f -name '*.log.gz' -newermt '$last_time'" | \
+rsync -avz \
+    --files-from=- \
+    --filter="- logs/current" \
+    --filter="+ logs/*/http.*.log.gz" \
+    --filter="+ logs/*/smtp.*.log.gz" \
+    --filter="- logs/*/*" \
+    -e ssh $user@$host:/ data/$host
+
+# keep track of the newest file
+find data/$host -name '*.log.gz' | while read log_file
+do
+    if [ "$log_file" -nt "data/.$host.last" ]
+    then
+        #echo "$log_file is newer than data/.$host.last"
+        cp -p --attributes-only "$log_file" "data/.$host.last"
+    fi
+done

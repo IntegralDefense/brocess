@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+cd /opt/brocess || { echo "cannot cd to /opt/brocess"; exit 1; }
+
+if [ -e .lock ]
+then
+    echo "lock file exists - not runing (try removing the lock file)"
+    exit 1
+fi
+
+echo "started @ " $(date)
+touch .lock
+
+# process each host
+for host in 
+    bro_sensor_1.local \
+    bro_sensor_2.local \
+    bro_sensor_3.local
+do
+    (
+        if [ ! -d data/$host ]
+        then
+            mkdir data/$host
+        fi
+
+        ./brocess_collect user $host >> logs/brocess_collect.$host.log
+        ./brocess_process $host >> logs/brocess_process.$host.log
+        echo $host completed
+
+    ) &
+done
+
+echo "waiting for jobs to complete..."
+wait
+
+echo "finished @ " $(date)
+rm .lock

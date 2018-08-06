@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+host="$1"
+
+echo "processing $host"
+
+find data/$host -name '*.log.gz' | while read log_file
+do
+    echo "processing $log_file"
+    python3 brocess.py -r $log_file
+done
